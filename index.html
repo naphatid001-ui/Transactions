@@ -641,7 +641,7 @@ select option{background:var(--surface)}
 
 /* ════ FAB HOME BUTTON ════ */
 .fab-wrap{
-  display:none;
+  display:flex;
   position:fixed;
   bottom:24px;left:50%;
   transform:translateX(-50%);
@@ -650,8 +650,11 @@ select option{background:var(--surface)}
   touch-action:none;
   user-select:none;-webkit-user-select:none;
 }
-@media(max-width:768px){.fab-wrap{display:flex}}
-@media(min-width:769px){.top-tabs{display:flex !important}}
+/* ซ่อนบน desktop เท่านั้น */
+@media(min-width:769px){
+  .fab-wrap{display:none}
+  .top-tabs{display:flex !important}
+}
 
 .fab-menu{
   display:flex;flex-direction:row;gap:10px;
