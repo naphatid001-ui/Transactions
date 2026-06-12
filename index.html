@@ -1248,16 +1248,14 @@ function init(){
 
 /* ── TABS ── */
 function switchTab(name){
-  const panels=['overview','add','list'];
-  /* sync both top tabs and bottom nav */
+  /* sync all tabs (top + bottom nav) by onclick attribute */
   document.querySelectorAll('.tab').forEach(t=>{
-    const idx=[...t.parentElement.children].indexOf(t);
-    t.classList.toggle('active',panels[idx]===name);
+    const fn=t.getAttribute('onclick')||'';
+    t.classList.toggle('active', fn.includes("'"+name+"'"));
   });
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('panel-'+name).classList.add('active');
   if(name==='overview') updateCharts();
-  /* scroll to top on mobile */
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
