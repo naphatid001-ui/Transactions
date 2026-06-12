@@ -639,20 +639,68 @@ select option{background:var(--surface)}
   #confirm-modal > div{padding:1.5rem 1.25rem}
 }
 
-/* bottom nav bar */
-.bottom-nav{
-  display:flex;
-  position:fixed;bottom:0;left:0;right:0;z-index:300;
-  background:var(--surface);
-  border-top:1px solid var(--border);
-  padding:8px 0 max(16px,env(safe-area-inset-bottom));
+/* ════ FAB HOME BUTTON ════ */
+.fab-wrap{
+  display:none;
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  z-index:400;flex-direction:column;align-items:center;gap:12px;
+}
+@media(max-width:768px){.fab-wrap{display:flex}}
+@media(min-width:769px){.top-tabs{display:flex !important}}
+
+.fab-menu{
+  display:flex;flex-direction:row;gap:10px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:40px;padding:8px 14px;
+  box-shadow:0 8px 32px rgba(0,0,0,.18);
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  opacity:0;transform:translateY(16px) scale(.95);
+  pointer-events:none;
+  transition:opacity .22s,transform .22s;
 }
-/* ซ่อนบน desktop */
-@media(min-width:769px){
-  .bottom-nav{display:none}
-  .top-tabs{display:flex !important}
+.fab-menu.open{
+  opacity:1;transform:translateY(0) scale(1);
+  pointer-events:all;
 }
+.fab-menu-item{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:10px 18px;border-radius:28px;border:none;
+  font-family:inherit;font-size:.72rem;font-weight:700;
+  background:none;color:var(--text2);cursor:pointer;
+  transition:all .15s;min-width:64px;
+  -webkit-tap-highlight-color:transparent;
+}
+.fab-menu-item:hover,.fab-menu-item.active{
+  background:var(--accent-dim);color:var(--accent);
+}
+.fab-menu-item svg{
+  width:22px;height:22px;stroke:currentColor;stroke-width:1.8;
+  fill:none;stroke-linecap:round;stroke-linejoin:round;
+}
+
+.fab-btn{
+  width:60px;height:60px;border-radius:50%;border:none;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 6px 24px rgba(79,70,229,.45);
+  transition:transform .2s,box-shadow .2s;
+  -webkit-tap-highlight-color:transparent;
+  flex-shrink:0;
+}
+.fab-btn:active{transform:scale(.92)}
+.fab-btn svg{width:26px;height:26px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s}
+.fab-btn.open svg{transform:rotate(45deg)}
+
+/* hide old bottom nav */
+.bottom-nav{display:none !important}
+
+/* main padding for FAB */
+@media(max-width:768px){
+  .top-tabs{display:none !important}
+  main{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
+}
+
 .bottom-nav .tabs{
   display:flex;gap:4px;background:none;border:none;border-radius:0;
   padding:0 12px;margin:0;
@@ -963,23 +1011,28 @@ select option{background:var(--surface)}
 
 </main>
 
-<!-- Bottom Nav (mobile only) -->
-<nav class="bottom-nav" id="bottom-nav">
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('overview')">
+<!-- FAB Home Button (mobile) -->
+<div class="fab-wrap" id="fab-wrap">
+  <!-- menu -->
+  <div class="fab-menu" id="fab-menu">
+    <button class="fab-menu-item active" id="fab-overview" onclick="fabGo('overview')">
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
       ภาพรวม
     </button>
-    <button class="tab" onclick="switchTab('add')">
+    <button class="fab-menu-item" id="fab-add" onclick="fabGo('add')">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
       เพิ่ม
     </button>
-    <button class="tab" onclick="switchTab('list')">
+    <button class="fab-menu-item" id="fab-list" onclick="fabGo('list')">
       <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
       รายการ
     </button>
   </div>
-</nav>
+  <!-- main FAB button -->
+  <button class="fab-btn" id="fab-btn" onclick="toggleFab()">
+    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
+</div>
 
 <!-- Custom Confirm Modal -->
 <div id="confirm-modal" style="
@@ -1632,7 +1685,30 @@ function setType(type){
   updatePreview();
 }
 
-/* ── FILTER TYPE CHIPS ── */
+/* ── FAB ── */
+let fabOpen=false;
+function toggleFab(){
+  fabOpen=!fabOpen;
+  document.getElementById('fab-menu').classList.toggle('open',fabOpen);
+  document.getElementById('fab-btn').classList.toggle('open',fabOpen);
+}
+function fabGo(name){
+  switchTab(name);
+  /* update active */
+  ['overview','add','list'].forEach(n=>{
+    const el=document.getElementById('fab-'+n);
+    if(el) el.classList.toggle('active',n===name);
+  });
+  /* close menu */
+  fabOpen=false;
+  document.getElementById('fab-menu').classList.remove('open');
+  document.getElementById('fab-btn').classList.remove('open');
+}
+/* close FAB when tap outside */
+document.addEventListener('click',e=>{
+  const wrap=document.getElementById('fab-wrap');
+  if(wrap&&!wrap.contains(e.target)&&fabOpen) toggleFab();
+});
 let fType='all';
 function setFType(t){
   fType=t;
