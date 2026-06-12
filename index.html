@@ -657,33 +657,44 @@ select option{background:var(--surface)}
 }
 
 .fab-menu{
-  display:flex;flex-direction:row;gap:10px;
+  display:flex;flex-direction:column;gap:8px;
   background:var(--surface);border:1px solid var(--border);
-  border-radius:40px;padding:8px 14px;
+  border-radius:20px;padding:10px 8px;
   box-shadow:0 8px 32px rgba(0,0,0,.18);
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-  opacity:0;transform:translateY(16px) scale(.95);
+  opacity:0;transform:scale(.9);
   pointer-events:none;
-  transition:opacity .22s,transform .22s;
+  transition:opacity .2s,transform .2s;
+  position:absolute;
+  bottom:70px;
+  left:50%;transform-origin:bottom center;
 }
 .fab-menu.open{
-  opacity:1;transform:translateY(0) scale(1);
+  opacity:1;transform:scale(1);
   pointer-events:all;
 }
+/* เมื่อปุ่มอยู่ฝั่งขวา → menu ชิดซ้าย */
+.fab-wrap.side-right .fab-menu{
+  left:auto;right:0;transform-origin:bottom right;
+}
+/* เมื่อปุ่มอยู่ฝั่งซ้าย → menu ชิดขวา */
+.fab-wrap.side-left .fab-menu{
+  left:0;transform-origin:bottom left;
+}
 .fab-menu-item{
-  display:flex;flex-direction:column;align-items:center;gap:4px;
-  padding:10px 18px;border-radius:28px;border:none;
-  font-family:inherit;font-size:.72rem;font-weight:700;
+  display:flex;flex-direction:row;align-items:center;gap:10px;
+  padding:10px 16px;border-radius:12px;border:none;
+  font-family:inherit;font-size:.85rem;font-weight:600;
   background:none;color:var(--text2);cursor:pointer;
-  transition:all .15s;min-width:64px;
+  transition:all .15s;white-space:nowrap;width:100%;
   -webkit-tap-highlight-color:transparent;
 }
 .fab-menu-item:hover,.fab-menu-item.active{
   background:var(--accent-dim);color:var(--accent);
 }
 .fab-menu-item svg{
-  width:22px;height:22px;stroke:currentColor;stroke-width:1.8;
-  fill:none;stroke-linecap:round;stroke-linejoin:round;
+  width:20px;height:20px;stroke:currentColor;stroke-width:1.8;
+  fill:none;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;
 }
 
 .fab-btn{
@@ -1019,7 +1030,7 @@ select option{background:var(--surface)}
 </main>
 
 <!-- FAB Home Button (mobile) -->
-<div class="fab-wrap" id="fab-wrap">
+<div class="fab-wrap side-right" id="fab-wrap">
   <!-- menu -->
   <div class="fab-menu" id="fab-menu">
     <button class="fab-menu-item active" id="fab-overview" onclick="fabGo('overview')">
@@ -1028,7 +1039,7 @@ select option{background:var(--surface)}
     </button>
     <button class="fab-menu-item" id="fab-add" onclick="fabGo('add')">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
-      เพิ่ม
+      เพิ่มรายการ
     </button>
     <button class="fab-menu-item" id="fab-list" onclick="fabGo('list')">
       <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
@@ -1702,13 +1713,10 @@ function initFabDrag(){
   const wrap=document.getElementById('fab-wrap');
   if(!btn||!wrap)return;
 
-  /* start position — center bottom */
   const setPos=(x,y)=>{
     const hw=wrap.offsetWidth/2, hh=wrap.offsetHeight/2;
-    const maxX=window.innerWidth-hw-12;
-    const maxY=window.innerHeight-hh-12;
-    x=Math.max(hw+12,Math.min(maxX,x));
-    y=Math.max(hh+12,Math.min(maxY,y));
+    x=Math.max(hw+8,Math.min(window.innerWidth-hw-8,x));
+    y=Math.max(hh+8,Math.min(window.innerHeight-hh-8,y));
     wrap.style.left=x+'px';
     wrap.style.top=y+'px';
     wrap.style.bottom='auto';
@@ -1716,48 +1724,52 @@ function initFabDrag(){
     fabX=x;fabY=y;
   };
 
-  let startX,startY,startTX,startTY,moved=false;
+  let offsetX=0,offsetY=0,moved=false;
 
-  /* Touch */
+  /* ── Touch ── */
   btn.addEventListener('touchstart',e=>{
+    e.stopPropagation();
     const t=e.touches[0];
-    startX=t.clientX;startY=t.clientY;
     const r=wrap.getBoundingClientRect();
-    startTX=r.left+r.width/2;startTY=r.top+r.height/2;
+    /* offset = นิ้วแตะห่างจากกลาง wrap เท่าไหร่ */
+    offsetX=t.clientX-(r.left+r.width/2);
+    offsetY=t.clientY-(r.top+r.height/2);
     moved=false;fabDragging=false;
   },{passive:true});
 
   btn.addEventListener('touchmove',e=>{
     e.preventDefault();
     const t=e.touches[0];
-    const dx=t.clientX-startX, dy=t.clientY-startY;
-    if(Math.abs(dx)>6||Math.abs(dy)>6){moved=true;fabDragging=true;}
-    if(moved) setPos(startTX+dx,startTY+dy);
+    /* ตำแหน่งกลาง wrap = นิ้ว - offset เดิม */
+    const cx=t.clientX-offsetX;
+    const cy=t.clientY-offsetY;
+    const dx=cx-fabX, dy=cy-fabY;
+    if(!moved&&(Math.abs(dx)>5||Math.abs(dy)>5)){moved=true;fabDragging=true;}
+    if(moved) setPos(cx,cy);
   },{passive:false});
 
   btn.addEventListener('touchend',()=>{
-    setTimeout(()=>{fabDragging=false;},50);
-    if(!moved) return;
-    /* snap to nearest edge */
+    setTimeout(()=>{fabDragging=false;},80);
+    if(!moved)return;
     snapToEdge();
   });
 
-  /* Mouse (desktop testing) */
+  /* ── Mouse ── */
   btn.addEventListener('mousedown',e=>{
-    startX=e.clientX;startY=e.clientY;
     const r=wrap.getBoundingClientRect();
-    startTX=r.left+r.width/2;startTY=r.top+r.height/2;
+    offsetX=e.clientX-(r.left+r.width/2);
+    offsetY=e.clientY-(r.top+r.height/2);
     moved=false;
-    const onMove=e=>{
-      const dx=e.clientX-startX,dy=e.clientY-startY;
-      if(Math.abs(dx)>4||Math.abs(dy)>4){moved=true;fabDragging=true;}
-      if(moved) setPos(startTX+dx,startTY+dy);
+    const onMove=mv=>{
+      const cx=mv.clientX-offsetX, cy=mv.clientY-offsetY;
+      if(!moved){moved=true;fabDragging=true;}
+      setPos(cx,cy);
     };
     const onUp=()=>{
       document.removeEventListener('mousemove',onMove);
       document.removeEventListener('mouseup',onUp);
-      setTimeout(()=>{fabDragging=false;},50);
-      if(moved) snapToEdge();
+      setTimeout(()=>{fabDragging=false;},80);
+      if(moved)snapToEdge();
     };
     document.addEventListener('mousemove',onMove);
     document.addEventListener('mouseup',onUp);
@@ -1766,10 +1778,14 @@ function initFabDrag(){
   function snapToEdge(){
     const r=wrap.getBoundingClientRect();
     const cx=r.left+r.width/2;
-    const snapX=cx<window.innerWidth/2 ? r.width/2+16 : window.innerWidth-r.width/2-16;
-    wrap.style.transition='left .25s,top .25s';
+    const toLeft=cx<window.innerWidth/2;
+    const snapX=toLeft?wrap.offsetWidth/2+16:window.innerWidth-wrap.offsetWidth/2-16;
+    wrap.style.transition='left .22s cubic-bezier(.25,.46,.45,.94)';
     setPos(snapX,r.top+r.height/2);
-    setTimeout(()=>{wrap.style.transition='';},300);
+    /* toggle side class for menu direction */
+    wrap.classList.toggle('side-left',toLeft);
+    wrap.classList.toggle('side-right',!toLeft);
+    setTimeout(()=>{wrap.style.transition='';},250);
   }
 }
 
