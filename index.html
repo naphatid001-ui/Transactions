@@ -644,48 +644,38 @@ select option{background:var(--surface)}
   display:flex;
   position:fixed;
   bottom:28px;right:20px;
-  left:auto;
   z-index:400;
   flex-direction:column;align-items:flex-end;gap:0;
-  touch-action:none;
-  user-select:none;-webkit-user-select:none;
 }
-/* ซ่อนบน desktop เท่านั้น */
 @media(min-width:769px){
   .fab-wrap{display:none}
   .top-tabs{display:flex !important}
 }
 
 .fab-menu{
-  display:flex;flex-direction:column;gap:6px;
+  display:flex;flex-direction:column;gap:8px;
   background:var(--surface);border:1px solid var(--border);
-  border-radius:18px;padding:8px;
+  border-radius:20px;padding:10px 8px;
   box-shadow:0 8px 32px rgba(0,0,0,.18);
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-  opacity:0;
+  opacity:0;transform:scale(.9);
   pointer-events:none;
   transition:opacity .2s,transform .2s;
   position:absolute;
   bottom:70px;
-  /* default: ชิดขวา (side-right) */
-  right:0;left:auto;
-  transform:scale(.9);
-  transform-origin:bottom right;
-  min-width:160px;
+  left:50%;transform-origin:bottom center;
 }
 .fab-menu.open{
   opacity:1;transform:scale(1);
   pointer-events:all;
 }
-/* ปุ่มชิดขวา → menu โผล่ซ้าย */
+/* เมื่อปุ่มอยู่ฝั่งขวา → menu ชิดซ้าย */
 .fab-wrap.side-right .fab-menu{
-  right:0;left:auto;
-  transform-origin:bottom right;
+  left:auto;right:0;transform-origin:bottom right;
 }
-/* ปุ่มชิดซ้าย → menu โผล่ขวา */
+/* เมื่อปุ่มอยู่ฝั่งซ้าย → menu ชิดขวา */
 .fab-wrap.side-left .fab-menu{
-  left:0;right:auto;
-  transform-origin:bottom left;
+  left:0;transform-origin:bottom left;
 }
 .fab-menu-item{
   display:flex;flex-direction:row;align-items:center;gap:10px;
@@ -1037,6 +1027,7 @@ select option{background:var(--surface)}
 
 <!-- FAB Home Button (mobile) -->
 <div class="fab-wrap side-right" id="fab-wrap">
+  <!-- menu -->
   <div class="fab-menu" id="fab-menu">
     <button class="fab-menu-item active" id="fab-overview" onclick="fabGo('overview')">
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
@@ -1051,6 +1042,7 @@ select option{background:var(--surface)}
       รายการ
     </button>
   </div>
+  <!-- main FAB button -->
   <button class="fab-btn" id="fab-btn" onclick="toggleFab()">
     <svg viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>
   </button>
@@ -1122,7 +1114,7 @@ select option{background:var(--surface)}
 <div class="toast" id="toast"></div>
 
 <script>
-const API_URL='https://script.google.com/macros/s/AKfycbxlIEjjibDHnaGoPf-aI6PHARTn1FDxqu__kNIYsJ7nfmG1VIjwAtPQjKCYdKI9b-6p/exec';
+const API_URL='https://script.google.com/macros/s/AKfycbwtdSFLkMqdJAX9SvXjJw0j6Dv8QaewRnssg2JkgWlGnl2VuCpES1oZ_WQ_8BxN8Znk/exec';
 
 let transactions=[],currentType='income';
 let chartBar,chartDonutExp,chartDonutInc,chartLine;
@@ -1285,6 +1277,15 @@ const PAL_EXP=['#ef4444','#f97316','#f59e0b','#eab308','#ec4899','#a855f7','#fb9
 const PAL_INC=['#10b981','#06b6d4','#6ee7b7','#34d399','#84cc16','#4ade80','#22d3ee'];
 
 /* ── JSONP ── */
+/* ── GET: fetch ก่อน → JSONP fallback ── */
+async function gasGet(action){
+  try{
+    const res=await fetch(API_URL+'?action='+action);
+    if(res.ok)return await res.json();
+  }catch(e){}
+  return jsonp(API_URL+'?action='+action);
+}
+
 function jsonp(url){
   return new Promise((res,rej)=>{
     const cb='_cb'+Date.now();const s=document.createElement('script');
@@ -1297,8 +1298,31 @@ function jsonp(url){
   });
 }
 
-/* ── iframe POST ── */
-function gasPost(params){
+/* ── POST: fetch ก่อน → iframe fallback ── */
+async function gasPost(params){
+  try{
+    const res=await fetch(API_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:new URLSearchParams(params).toString()
+    });
+    if(res.ok)return await res.json();
+  }catch(e){}
+  return iframePost(params);
+}
+
+function iframePost(params){
+  return new Promise(res=>{
+    const nm='_f'+Date.now();const fr=document.createElement('iframe');
+    fr.name=nm;fr.style.display='none';document.body.appendChild(fr);
+    const form=document.createElement('form');
+    form.method='POST';form.action=API_URL;form.target=nm;form.style.display='none';
+    Object.entries(params).forEach(([k,v])=>{const i=document.createElement('input');i.type='hidden';i.name=k;i.value=v;form.appendChild(i)});
+    document.body.appendChild(form);
+    fr.onload=()=>{setTimeout(()=>{fr.remove();form.remove()},500);res({success:true})};
+    form.submit();
+  });
+}
   return new Promise(res=>{
     const nm='_f'+Date.now();const fr=document.createElement('iframe');
     fr.name=nm;fr.style.display='none';document.body.appendChild(fr);
@@ -1344,7 +1368,7 @@ function switchTab(name){
 async function loadData(){
   bar(true);
   try{
-    const r=await jsonp(API_URL+'?action=getAll');
+    const r=await gasGet('getAll');
     if(r.success){
       transactions=r.data;
       _pollHash=dataHash(r.data);
@@ -1709,92 +1733,8 @@ function setType(type){
 
 /* ── FAB ── */
 let fabOpen=false;
-let fabDragging=false;
-let fabX=null,fabY=null;
-
-function initFabDrag(){
-  const btn=document.getElementById('fab-btn');
-  const wrap=document.getElementById('fab-wrap');
-  if(!btn||!wrap)return;
-
-  /* set center position of wrap */
-  const setPos=(cx,cy)=>{
-    const W=wrap.offsetWidth, H=wrap.offsetHeight;
-    cx=Math.max(W/2+8, Math.min(window.innerWidth-W/2-8, cx));
-    cy=Math.max(H/2+8, Math.min(window.innerHeight-H/2-8, cy));
-    wrap.style.right='auto';
-    wrap.style.bottom='auto';
-    wrap.style.left=(cx-W/2)+'px';
-    wrap.style.top=(cy-H/2)+'px';
-    fabX=cx; fabY=cy;
-  };
-
-  /* init fabX/fabY from current position */
-  const initPos=()=>{
-    const r=wrap.getBoundingClientRect();
-    fabX=r.left+r.width/2;
-    fabY=r.top+r.height/2;
-  };
-  initPos();
-
-  let offsetX=0,offsetY=0,moved=false;
-
-  const onDragStart=(clientX,clientY)=>{
-    initPos();
-    offsetX=clientX-fabX;
-    offsetY=clientY-fabY;
-    moved=false; fabDragging=false;
-  };
-  const onDragMove=(clientX,clientY)=>{
-    const cx=clientX-offsetX;
-    const cy=clientY-offsetY;
-    if(!moved&&(Math.abs(cx-fabX)>5||Math.abs(cy-fabY)>5)){moved=true;fabDragging=true;}
-    if(moved) setPos(cx,cy);
-  };
-  const onDragEnd=()=>{
-    setTimeout(()=>{fabDragging=false;},80);
-    if(!moved)return;
-    snapToEdge();
-  };
-
-  btn.addEventListener('touchstart',e=>{
-    e.stopPropagation();
-    const t=e.touches[0];
-    onDragStart(t.clientX,t.clientY);
-  },{passive:true});
-  btn.addEventListener('touchmove',e=>{
-    e.preventDefault();
-    const t=e.touches[0];
-    onDragMove(t.clientX,t.clientY);
-  },{passive:false});
-  btn.addEventListener('touchend',onDragEnd);
-
-  btn.addEventListener('mousedown',e=>{
-    onDragStart(e.clientX,e.clientY);
-    const onMove=mv=>onDragMove(mv.clientX,mv.clientY);
-    const onUp=()=>{
-      document.removeEventListener('mousemove',onMove);
-      document.removeEventListener('mouseup',onUp);
-      onDragEnd();
-    };
-    document.addEventListener('mousemove',onMove);
-    document.addEventListener('mouseup',onUp);
-  });
-
-  function snapToEdge(){
-    const toLeft=fabX<window.innerWidth/2;
-    const W=wrap.offsetWidth;
-    const snapX=toLeft ? W/2+16 : window.innerWidth-W/2-16;
-    wrap.style.transition='left .22s cubic-bezier(.25,.46,.45,.94)';
-    setPos(snapX,fabY);
-    wrap.classList.toggle('side-left',toLeft);
-    wrap.classList.toggle('side-right',!toLeft);
-    setTimeout(()=>{wrap.style.transition='';},260);
-  }
-}
 
 function toggleFab(){
-  if(fabDragging)return;
   fabOpen=!fabOpen;
   document.getElementById('fab-menu').classList.toggle('open',fabOpen);
 }
@@ -1815,8 +1755,6 @@ document.addEventListener('click',e=>{
   }
 });
 
-/* init drag after DOM ready */
-setTimeout(initFabDrag,300);
 let fType='all';
 function setFType(t){
   fType=t;
@@ -1984,7 +1922,7 @@ function flashUpdate(){
 }
 async function pollData(){
   try{
-    const r=await jsonp(API_URL+'?action=getAll');
+    const r=await gasGet('getAll');
     if(r.success){
       const h=dataHash(r.data);
       if(h!==_pollHash){
