@@ -643,10 +643,10 @@ select option{background:var(--surface)}
 .fab-wrap{
   display:flex;
   position:fixed;
-  bottom:24px;left:50%;
-  transform:translateX(-50%);
+  bottom:28px;right:20px;
+  left:auto;
   z-index:400;
-  flex-direction:column;align-items:center;gap:12px;
+  flex-direction:column;align-items:flex-end;gap:0;
   touch-action:none;
   user-select:none;-webkit-user-select:none;
 }
@@ -657,29 +657,35 @@ select option{background:var(--surface)}
 }
 
 .fab-menu{
-  display:flex;flex-direction:column;gap:8px;
+  display:flex;flex-direction:column;gap:6px;
   background:var(--surface);border:1px solid var(--border);
-  border-radius:20px;padding:10px 8px;
+  border-radius:18px;padding:8px;
   box-shadow:0 8px 32px rgba(0,0,0,.18);
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-  opacity:0;transform:scale(.9);
+  opacity:0;
   pointer-events:none;
   transition:opacity .2s,transform .2s;
   position:absolute;
   bottom:70px;
-  left:50%;transform-origin:bottom center;
+  /* default: ชิดขวา (side-right) */
+  right:0;left:auto;
+  transform:scale(.9);
+  transform-origin:bottom right;
+  min-width:160px;
 }
 .fab-menu.open{
   opacity:1;transform:scale(1);
   pointer-events:all;
 }
-/* เมื่อปุ่มอยู่ฝั่งขวา → menu ชิดซ้าย */
+/* ปุ่มชิดขวา → menu โผล่ซ้าย */
 .fab-wrap.side-right .fab-menu{
-  left:auto;right:0;transform-origin:bottom right;
+  right:0;left:auto;
+  transform-origin:bottom right;
 }
-/* เมื่อปุ่มอยู่ฝั่งซ้าย → menu ชิดขวา */
+/* ปุ่มชิดซ้าย → menu โผล่ขวา */
 .fab-wrap.side-left .fab-menu{
-  left:0;transform-origin:bottom left;
+  left:0;right:auto;
+  transform-origin:bottom left;
 }
 .fab-menu-item{
   display:flex;flex-direction:row;align-items:center;gap:10px;
@@ -1031,7 +1037,6 @@ select option{background:var(--surface)}
 
 <!-- FAB Home Button (mobile) -->
 <div class="fab-wrap side-right" id="fab-wrap">
-  <!-- menu -->
   <div class="fab-menu" id="fab-menu">
     <button class="fab-menu-item active" id="fab-overview" onclick="fabGo('overview')">
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
@@ -1046,7 +1051,6 @@ select option{background:var(--surface)}
       รายการ
     </button>
   </div>
-  <!-- main FAB button -->
   <button class="fab-btn" id="fab-btn" onclick="toggleFab()">
     <svg viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>
   </button>
@@ -1713,79 +1717,79 @@ function initFabDrag(){
   const wrap=document.getElementById('fab-wrap');
   if(!btn||!wrap)return;
 
-  const setPos=(x,y)=>{
-    const hw=wrap.offsetWidth/2, hh=wrap.offsetHeight/2;
-    x=Math.max(hw+8,Math.min(window.innerWidth-hw-8,x));
-    y=Math.max(hh+8,Math.min(window.innerHeight-hh-8,y));
-    wrap.style.left=x+'px';
-    wrap.style.top=y+'px';
+  /* set center position of wrap */
+  const setPos=(cx,cy)=>{
+    const W=wrap.offsetWidth, H=wrap.offsetHeight;
+    cx=Math.max(W/2+8, Math.min(window.innerWidth-W/2-8, cx));
+    cy=Math.max(H/2+8, Math.min(window.innerHeight-H/2-8, cy));
+    wrap.style.right='auto';
     wrap.style.bottom='auto';
-    wrap.style.transform='none';
-    fabX=x;fabY=y;
+    wrap.style.left=(cx-W/2)+'px';
+    wrap.style.top=(cy-H/2)+'px';
+    fabX=cx; fabY=cy;
   };
+
+  /* init fabX/fabY from current position */
+  const initPos=()=>{
+    const r=wrap.getBoundingClientRect();
+    fabX=r.left+r.width/2;
+    fabY=r.top+r.height/2;
+  };
+  initPos();
 
   let offsetX=0,offsetY=0,moved=false;
 
-  /* ── Touch ── */
-  btn.addEventListener('touchstart',e=>{
-    e.stopPropagation();
-    const t=e.touches[0];
-    const r=wrap.getBoundingClientRect();
-    /* offset = นิ้วแตะห่างจากกลาง wrap เท่าไหร่ */
-    offsetX=t.clientX-(r.left+r.width/2);
-    offsetY=t.clientY-(r.top+r.height/2);
-    moved=false;fabDragging=false;
-  },{passive:true});
-
-  btn.addEventListener('touchmove',e=>{
-    e.preventDefault();
-    const t=e.touches[0];
-    /* ตำแหน่งกลาง wrap = นิ้ว - offset เดิม */
-    const cx=t.clientX-offsetX;
-    const cy=t.clientY-offsetY;
-    const dx=cx-fabX, dy=cy-fabY;
-    if(!moved&&(Math.abs(dx)>5||Math.abs(dy)>5)){moved=true;fabDragging=true;}
+  const onDragStart=(clientX,clientY)=>{
+    initPos();
+    offsetX=clientX-fabX;
+    offsetY=clientY-fabY;
+    moved=false; fabDragging=false;
+  };
+  const onDragMove=(clientX,clientY)=>{
+    const cx=clientX-offsetX;
+    const cy=clientY-offsetY;
+    if(!moved&&(Math.abs(cx-fabX)>5||Math.abs(cy-fabY)>5)){moved=true;fabDragging=true;}
     if(moved) setPos(cx,cy);
-  },{passive:false});
-
-  btn.addEventListener('touchend',()=>{
+  };
+  const onDragEnd=()=>{
     setTimeout(()=>{fabDragging=false;},80);
     if(!moved)return;
     snapToEdge();
-  });
+  };
 
-  /* ── Mouse ── */
+  btn.addEventListener('touchstart',e=>{
+    e.stopPropagation();
+    const t=e.touches[0];
+    onDragStart(t.clientX,t.clientY);
+  },{passive:true});
+  btn.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    const t=e.touches[0];
+    onDragMove(t.clientX,t.clientY);
+  },{passive:false});
+  btn.addEventListener('touchend',onDragEnd);
+
   btn.addEventListener('mousedown',e=>{
-    const r=wrap.getBoundingClientRect();
-    offsetX=e.clientX-(r.left+r.width/2);
-    offsetY=e.clientY-(r.top+r.height/2);
-    moved=false;
-    const onMove=mv=>{
-      const cx=mv.clientX-offsetX, cy=mv.clientY-offsetY;
-      if(!moved){moved=true;fabDragging=true;}
-      setPos(cx,cy);
-    };
+    onDragStart(e.clientX,e.clientY);
+    const onMove=mv=>onDragMove(mv.clientX,mv.clientY);
     const onUp=()=>{
       document.removeEventListener('mousemove',onMove);
       document.removeEventListener('mouseup',onUp);
-      setTimeout(()=>{fabDragging=false;},80);
-      if(moved)snapToEdge();
+      onDragEnd();
     };
     document.addEventListener('mousemove',onMove);
     document.addEventListener('mouseup',onUp);
   });
 
   function snapToEdge(){
-    const r=wrap.getBoundingClientRect();
-    const cx=r.left+r.width/2;
-    const toLeft=cx<window.innerWidth/2;
-    const snapX=toLeft?wrap.offsetWidth/2+16:window.innerWidth-wrap.offsetWidth/2-16;
+    const toLeft=fabX<window.innerWidth/2;
+    const W=wrap.offsetWidth;
+    const snapX=toLeft ? W/2+16 : window.innerWidth-W/2-16;
     wrap.style.transition='left .22s cubic-bezier(.25,.46,.45,.94)';
-    setPos(snapX,r.top+r.height/2);
-    /* toggle side class for menu direction */
+    setPos(snapX,fabY);
     wrap.classList.toggle('side-left',toLeft);
     wrap.classList.toggle('side-right',!toLeft);
-    setTimeout(()=>{wrap.style.transition='';},250);
+    setTimeout(()=>{wrap.style.transition='';},260);
   }
 }
 
